@@ -1,0 +1,4 @@
+# SHA256 de referência do dataset bruto FolhaUOL.
+# Gravado no primeiro uso (TOFU) por scripts/verificar_dataset.py.
+# Commit este arquivo para fixar a referência compartilhada.
+aa62ad037e21300c12d5c0416b55103d4225162fa5ce0746ec70d5dd9791f1de  archive.zip

@@ -1,0 +1,2 @@
+total_corpus_bruto,linhas_com_text_nulo,afetadas_exatas,afetadas_near,afetadas_uniao,pct_corpus_afetado,parada_acionada,pares_near_encontrados,pares_inter_periodo,pares_truncados_no_csv
+167053,765,3077,934,3438,0.020580294876476328,True,2990,2131,False

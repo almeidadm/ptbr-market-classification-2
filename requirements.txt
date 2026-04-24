@@ -1,0 +1,33 @@
+# Dependências do projeto (decisões 002 e 009).
+# Fallback pip-first alinhado a `CLAUDE.md §5` (Colab-first).
+# Versões mínimas validadas localmente em 2026-04-23 (Python 3.12);
+# compatibilidade com imagem Colab atual (Python 3.11) reverificada a
+# cada bump de dependência.
+
+# --- EDA (decisão 002) ---
+pandas>=2.2,<3
+numpy>=1.26,<2
+scipy>=1.14,<2
+matplotlib>=3.8,<4
+scikit-learn>=1.5,<2
+datasketch>=1.6,<2
+nltk>=3.9,<4
+pytest>=8,<10
+jupyter>=1.0,<2
+
+# --- Pipeline experimental (decisão 009) ---
+# Parquet como formato canônico de predictions e corpus processado.
+pyarrow>=16,<18
+
+# BERTimbau (Fase 3): fine-tuning via HF Trainer. `accelerate` requerido
+# pelo Trainer em transformers>=4.41; `datasets` para batching eficiente.
+transformers>=4.44,<5
+torch>=2.3,<3
+accelerate>=0.33
+datasets>=2.20
+evaluate>=0.4
+sentencepiece>=0.2
+
+# Llama 3.1 8B zero-shot (Fase 3): inferência em L4 com quantização GPTQ 4-bit.
+# vLLM 0.6+ suporta GPTQ nativamente via backend Marlin em GPUs Ampere+.
+vllm>=0.6,<1

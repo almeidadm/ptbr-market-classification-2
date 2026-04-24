@@ -1,0 +1,42 @@
+# Dataset bruto — reconstruído via scripts/verificar_dataset.py (vide docs/decisoes/001)
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/DATASET_HASH.txt
+
+# Dataset processado — reconstruído via scripts/preprocessar.py (vide docs/decisoes/009)
+data/processado/*
+!data/processado/.gitkeep
+
+# Artefatos de experimentos — reconstruídos via scripts/experimentar.py (vide docs/decisoes/009)
+artifacts/experimentos/*
+!artifacts/experimentos/.gitkeep
+
+# Checkpoints e pesos de modelo (persistência fraca, decisão 009 §D)
+*.ckpt
+*.safetensors
+*.bin
+*.pt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+env/
+venv/
+
+# Credenciais
+.env
+.env.*
+!.env.example
+*.kaggle.json
+kaggle.json
+
+# Artefatos de IDE/OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+
+# Configuração local do Claude Code (permissões e estado por usuário)
+.claude/

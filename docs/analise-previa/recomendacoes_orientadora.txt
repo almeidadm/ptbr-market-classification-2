@@ -1,0 +1,11 @@
+0) Treino 'One vs Rest' e 'multiclasse 7 + other' 
+
+1) desbalanceamento das classes, no binário teria mto menos notícias pra economia,  qual o impacto ou como mitigar isso (usar llm pra fz dados sintéticos, etc) 
+
+2) comparar diferentes abordagens como vc tem feito, bertimbau,  ML clássico,  zero/few shot
+
+3) tentar analisar falsos positivos,  pq política foi classificado como economia, qual a semântica desses contextos, não sei ainda como medir isso
+
+4) Uso grid search pra otimizar tds os parâmetros 
+
+5) Uso de cross validation

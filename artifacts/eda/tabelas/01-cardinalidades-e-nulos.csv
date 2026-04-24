@@ -1,0 +1,7 @@
+coluna,nulos,pct_nulos,valores_unicos_nao_nulos,dtype
+title,0,0.0,164119,object
+text,765,0.004579384985603371,165901,object
+date,0,0.0,987,datetime64[ns]
+category,0,0.0,48,object
+subcategory,137418,0.822601210394306,293,object
+link,0,0.0,167053,object

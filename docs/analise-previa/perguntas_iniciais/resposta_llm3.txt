@@ -1,0 +1,65 @@
+Olá! É um prazer colaborar com a sua pesquisa. O dataset FolhaUOL é um excelente laboratório para Processamento de Linguagem Natural (PLN) no Brasil, mas você tocou no ponto nevrálgico: quando um classificador linear atinge métricas altíssimas, o desafio deixa de ser "como subir o F1-score" e passa a ser "por que este problema é considerado resolvido e onde estão as falhas latentes?".
+
+Para um artigo no BRACIS, os revisores buscarão rigor metodológico e análises que transcendam a simples comparação de algoritmos. Vamos estruturar suas dúvidas com base na literatura científica.
+1. Stratified K-Fold vs. Temporal Split vs. Data Drift
+
+Em datasets de notícias, a independência estatística entre as amostras (i.i.d.) é frequentemente violada pela cronologia dos fatos.
+
+    O Problema do Stratified K-Fold: Ao embaralhar os dados de 2015-2017, você permite que o modelo "veja o futuro". Se uma notícia de janeiro de 2017 sobre a queda da bolsa for usada para treinar e uma de dezembro de 2016 para testar, o modelo pode estar aprendendo entidades específicas daquela janela temporal que não se generalizam.
+
+    A Recomendação: Utilize o Time Series Split (Rolling Window) ou uma abordagem de Sliding Window. Isso simula o cenário real de produção: treinar com o passado para prever o futuro imediato.
+
+    Fundamentação: Araslanov et al. (2019) discutem como a estrutura temporal afeta a avaliação de modelos, sugerindo que o split aleatório infla artificialmente o desempenho em séries temporais de texto.
+
+2. Metodologia de Pipeline: Como evitar o "Tudo contra Todos"?
+
+Para não transformar seu artigo em uma "sopa de letrinhas" sem foco, organize os modelos por famílias de representação:
+
+    Baseline Estatístico: TF-IDF + LinearSVC (Eficiência e interpretabilidade).
+
+    Representação Contextual (Deep Learning): BERTimbau (Estado da arte em embeddings).
+
+    Paradigma de Prompting (Generativo): LLM Zero/Few-shot (Avaliação de generalização sem fine-tuning).
+
+    Meta-Aprendizado: Ensemble (Apostando na diversidade de erros).
+
+    Dica de mestre: Use o modelo clássico como o "ponto de ancoragem". Mostre que, embora o BERT seja superior em semântica, o custo computacional ou a latência podem não justificar o ganho marginal. Isso é uma contribuição real de engenharia de ML.
+
+3. Critérios de Avaliação Relevantes para o BRACIS
+
+Além das métricas tradicionais (F1, Precision, Recall, PR−AUC), foque em:
+
+    Robustez ao Desbalanceamento: Como a categoria 'mercado' é minoritária, reporte a Macro-F1 e a G-Mean. O uso de Precision-Recall Curves é muito mais informativo que a Acurácia neste cenário.
+
+    Custo de Inferência: Compare o tempo de processamento/token entre o LinearSVC e o LLM.
+
+    Análise de Erro Qualitativa: O BRACIS valoriza muito a discussão sobre por que o modelo falhou, e não apenas quanto ele falhou.
+
+    Fundamentação: Garcia et al. (2024), que você citou, estabelece um excelente padrão de comparação multiclasse que você deve usar como régua.
+
+4. Medindo o Data Drift (Deriva de Dados)
+
+O Data Drift ocorre quando a distribuição estatística das variáveis independentes muda ao longo do tempo (P(X) muda). Em notícias, isso é comum: o vocabulário de "mercado" em 2015 (crise fiscal) pode ser diferente de 2017 (reformas).
+
+    Como medir: Utilize o Population Stability Index (PSI) ou o teste de Kolmogorov-Smirnov entre as distribuições de tokens dos diferentes anos.
+
+    Abordagem do "Classificador de Proxy": Tente treinar um classificador para adivinhar o ano da notícia. Se o modelo conseguir distinguir com facilidade notícias de 2015 vs 2017 apenas pelo texto, há um drift temporal significativo.
+
+    Fundamentação: Lu et al. (2018) fornecem uma taxonomia completa sobre aprendizado sob Concept Drift.
+
+5. Análise Semântica de Falsos Positivos (FP)
+
+Para entender por que "Política" vira "Economia", você precisa de Explicabilidade (XAI).
+
+    SHAP ou LIME: Aplique esses métodos para identificar quais palavras (features) estão "puxando" o registro para a classe errada. Provavelmente termos como "Ministério", "Orçamento" ou nomes de ministros são a ponte semântica.
+
+    Projeção de Embeddings: Use t-SNE ou UMAP para visualizar o espaço vetorial do BERT. Verifique se os clusters de 'Política' e 'Mercado' possuem uma zona de interseção (overlap). Isso prova que a ambiguidade é intrínseca ao domínio, e não uma falha do modelo.
+
+    Fundamentação: Ribeiro et al. (2016) introduzem o LIME, essencial para entender classificadores "caixa-preta".
+
+Sugestão Metodológica para Mitigação de Desbalanceamento
+
+Sobre o uso de LLMs para dados sintéticos: embora tentador, tome cuidado. Gerar notícias sintéticas pode introduzir vieses do modelo gerador (hallucinations). Uma abordagem mais robusta para o BRACIS seria o Cost-Sensitive Learning (penalizar mais o erro na classe 'mercado') ou o SMOTE para embeddings de texto.
+
+Minha pergunta para darmos o próximo passo:
+Dado que o seu LinearSVC já performa muito bem, você já verificou se os erros (Falsos Positivos) ocorrem em notícias curtas ou em textos com vocabulário muito genérico? Isso pode ser a chave para a sua "contribuição real".

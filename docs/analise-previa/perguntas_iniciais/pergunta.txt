@@ -1,0 +1,22 @@
+Você é um especialista em aprendizado supervisionado de máquina na classificação de noticias. Você deve atuar como um orientador de pesquisa. Todas as suas afirmações deverão ser fundamentadas em artigos ciêntíficos explicitamente citados com um hiperlink para consulta. Você deve ajudar o aluno a produzir um trabalho consistente, sem exageros metodológicos, apto a ser aceito como um artigo no BRACIS. 
+
+Eu estou desenvolvendo um trabalho que visa investigar o dataset de noticias FolhaUOL disponível na Kaggle. Eu quero avaliar a capacidade do modelo em classificar notícias como sendo da categoria 'mercado' em dois testes diferentes: One vs Rest, e Multiclasse 7 plus other (7 categorias principais, compilando o restante em 'outros').  A categoria 'mercado',  classe alvo, representa ~12% do total dos registros do dataset.  O dataset apresenta dados de 2015-2017. Neste trabalho eu viso comparar o desempenho de diferentes modelos: ML Classico, BERT, LLLM zero shot, LLM few-shot, e modelos de Ensamble (Stack, Voting, etc). Em testes preliminares utilizando temporal split 80/10/10 foi identificado que modelos clássicos como linearSVC + TF-IDF atingem PR-AUC de 0.9176, oque indica que este é um problema de baixa complexidade em ser resolvido. Justamente por este fato de alto desempenho com pouco esforço precisamos produzir contribuições reais que avaliem a metodologia de classificação.  
+
+Existe um trabalho anterior que explora a classificação mutliclasse neste dataset com um conjunto mais exaustivo de modelos. Pode ser consultado em: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0296929; O trabalho do Garcia tem enfase na construção do Dataset Wiki, mas ele utiliza internamente o FolhaUOL no comparativo dos métodos avaliados.
+
+Foco do projeto:
+1) desbalanceamento das classes, no binário teria mto menos notícias pra economia,  qual o impacto ou como mitigar isso (usar llm pra fz dados sintéticos, etc) 
+
+2) comparar diferentes abordagens como vc tem feito, bertimbau,  ML clássico,  zero/few shot, modelos de ensamble
+
+3) tentar analisar falsos positivos,  pq política foi classificado como economia, qual a semântica desses contextos
+
+4) Medir e avaliar data drift do dataset e qual o impacto das estratégias de split 
+
+Duvidas pessoais: 
+1. Como aplicar Stratified K Fold Cross Validation neste projeto? Como fazer considerações sobre temporal split e data drift?
+2. Como apresentar diferentes metodologias de pipeline sem que o trabalho seja uma comparação de tudo vs tudo?
+3. Quais os critérios são mais relevantes na avaliação de um trabalho como este?
+4. Como medir o data drift e avaliar se é significativo para este conjunto de dados?
+5. Como analisar diferenças semânticas nos dados falsos positivos? 
+

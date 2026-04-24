@@ -1,0 +1,64 @@
+Vou atuar como seu orientador nesta pesquisa. Antes de responder, vou buscar referências atualizadas e específicas para fundamentar cada recomendação, já que este é um trabalho que será submetido ao BRACIS e precisa de rigor metodológico. Farei buscas direcionadas aos pontos mais críticos que você levantou.Estruturou resposta orientadora abordando cinco dúvidas metodológicas simultaneamenteEstruturou resposta orientadora abordando cinco dúvidas metodológicas simultaneamenteÓtimo contexto. Tenho o material necessário para sustentar as recomendações. Vou estruturar a orientação em duas partes: primeiro, um reenquadramento do projeto — que considero essencial antes de entrar nas dúvidas técnicas — e depois as respostas específicas às suas cinco perguntas, cada uma com referências para você consultar.
+Reenquadramento: qual é a contribuição real?
+Seu próprio diagnóstico é o ponto de partida mais honesto do trabalho: um LinearSVC + TF-IDF já atinge PR-AUC ≈ 0,92. Para o BRACIS, onde revisores olham atentamente para "contribuição incremental", essa observação é um ativo, não um passivo — desde que você pare de tratar o objetivo como "melhorar a métrica" e passe a tratá-lo como "caracterizar por que é tão fácil e onde essa facilidade se quebra". O trabalho de Garcia et al. (PLOS ONE, 2024) já fez o benchmark exaustivo multiclasse. Repetir isso em binário não contribui.
+A contribuição defensável do seu projeto é metodológica: mostrar que, para problemas de classificação de notícias aparentemente saturados, a escolha de protocolo (split, validação, balanceamento) e a análise de erros revelam limitações que a métrica agregada esconde. Esse é exatamente o ponto central do trabalho de Mello et al. sobre concept drift em classificação de notícias (SBC KDMiLe, 2021), que mostra como "o desempenho de modelos offline é superotimista" quando ignoramos a dinâmica temporal — um achado diretamente aplicável ao seu caso. Gonçalves et al. (Le Monde corpus, Springer, 2012) também demonstraram isso em notícias por um período de sete anos.
+Sugiro abandonar a ambição de "ML clássico vs. BERT vs. LLM zero-shot vs. LLM few-shot vs. Ensemble". Esse é o erro clássico de "tudo vs. tudo" que você mesmo identificou. Em vez disso, pick two axes que produzam insights:
+
+Eixo 1 (robustez a desbalanceamento): como cada família de modelo degrada quando variamos artificialmente a razão de desbalanceamento?
+Eixo 2 (robustez temporal/drift): como cada família degrada quando há gap temporal entre treino e teste?
+
+Isso transforma um benchmark em um estudo sobre propriedades do problema. Vamos às suas dúvidas.
+
+1. Stratified K-Fold vs. temporal split
+Essas duas estratégias respondem a perguntas diferentes, e misturá-las sem critério é uma ameaça à validade do trabalho. Bergmeir, Hyndman e Koo (Computational Statistics & Data Analysis, 2018) demonstraram que K-fold padrão pode ser válido para modelos de predição temporal quando os erros são não-correlacionados, mas em seu caso há forte evidência de correlação temporal (drift em notícias). A recomendação clássica para séries temporais é forward chaining ou rolling-origin evaluation — Hyndman explica a mecânica no post original.
+Minha recomendação operacional, coerente com o escopo de um paper de conferência:
+
+Protocolo primário: expanding-window temporal CV. Divida 2015–2017 em, digamos, 12 blocos trimestrais. O fold k treina em [blocos 1..k] e testa em [bloco k+1]. Isso dá 8–10 folds temporalmente consistentes e reproduz o cenário realista de produção. Dentro de cada fold, a estratificação ocorre apenas como sanity-check, não como mecanismo de sampling.
+Protocolo secundário (contraste): Stratified K-Fold aleatório. Use exatamente os mesmos modelos e hiperparâmetros. A diferença entre PR-AUC do (a) e (b) é uma das contribuições do paper — quantifica o otimismo induzido por ignorar o tempo. Mello et al. (citado acima) chamam isso de "desempenho superotimista". Você replica o achado deles no FolhaUOL.
+Hyperparâmetros: nested CV só se a carga computacional permitir. Se não, separe um bloco temporal inicial (ex: 2015-S1) como "validation pool" fixo, e faça ajuste ali antes de rodar o protocolo primário.
+
+Para BERTimbau, rodar 8–10 folds é caro. Convencionalmente, aceita-se reportar BERT em um número menor de folds (3–5) e justificar no paper.
+2. Como apresentar pipelines sem cair em "tudo vs. tudo"
+Essa é provavelmente a decisão editorial mais importante do trabalho. A heurística que funciona em revisões: cada modelo precisa responder a uma pergunta específica, não apenas "existir na tabela".
+Sugiro a seguinte organização:
+
+Baseline (TF-IDF + LinearSVC): estabelece o teto do "que dá para extrair de features superficiais". Você já tem esse resultado.
+BERTimbau fine-tuned (Souza, Nogueira & Lotufo, 2020): testa se representações contextuais em português adicionam valor quando o problema já é resolvido lexicamente. Hipótese plausível: ganho marginal no agregado, mas diferença maior nos falsos positivos semanticamente ambíguos (seu ponto 3). Essa hipótese é falsificável e testável.
+LLM zero-shot + few-shot: testa a pergunta "quanto do problema é resolvível sem dados rotulados?". Essa pergunta é relevante em jornalismo, onde rotulagem é cara. Aqui você pode citar o survey de Bayer, Kaufhold e Reuter (ACM Computing Surveys, 2022) para sustentar o framing de data augmentation e geração via LLM.
+Ensemble (um único, bem escolhido): use-o como "ceiling probing". Não apresente Stacking e Voting e Boosting. Escolha um — preferencialmente Stacking com três membros heterogêneos — e reporte. A pergunta é: "quanto ainda sobra para extrair combinando os anteriores?".
+
+Essa organização é defensável porque cada modelo tem uma tese associada. Revisores do BRACIS tipicamente criticam tabelas grandes sem tese — então monte 4 quadros de resultado, cada um respondendo a uma pergunta. Opcionalmente, adicione um quadro final de "desempenho sob stress" (drift + desbalanceamento), que é onde as diferenças interessantes aparecem.
+3. Critérios de avaliação para um trabalho como este
+Para conferências como o BRACIS, revisores avaliam tipicamente quatro dimensões:
+Primeiro, contribuição/originalidade. Dado que Garcia et al. já cobriram o benchmarking, sua contribuição precisa ser metodológica — o estudo de robustez a drift e imbalance, e a análise qualitativa de falsos positivos, são candidatos naturais.
+Segundo, rigor metodológico. Isso inclui: reportar não apenas médias mas desvios-padrão ou intervalos de confiança; aplicar testes de significância para comparações entre modelos (McNemar para comparações pareadas; Friedman + pós-teste de Nemenyi para múltiplos classificadores, como recomendado por Demšar, JMLR 2006); documentar claramente seeds, splits e hiperparâmetros.
+Terceiro, escolha de métricas coerente com o problema. Para classe-alvo em 12%, acurácia é enganosa. PR-AUC é adequado (bom que você já usa); F1 na classe positiva, precisão@k e análise de curva precision-recall são complementares. Reporte também o erro sob diferentes limiares — isso expõe o comportamento do classificador em regimes operacionais distintos.
+Quarto, reprodutibilidade. Compartilhe código, splits explícitos, e deixe claro o que é BERTimbau base, large, qual checkpoint, qual prompt para LLM, qual versão do modelo (p.ex. gpt-4o-2024-08-06), temperatura, etc. Isso blinda o paper em revisão.
+Um critério não-técnico: reconhecimento honesto das limitações. Se você comparar com Garcia et al. ou com sua própria baseline e encontrar diferenças pequenas, diga isso abertamente. Trabalhos que superestimam contribuições são descartados rapidamente.
+4. Como medir e avaliar data drift
+Recomendo distinguir três tipos de drift e medir cada um:
+
+Label drift — P(y) muda ao longo do tempo. É o mais simples: calcule a frequência de cada categoria por mês/trimestre e plote. Para o binário "mercado vs resto", veja se a taxa base de "mercado" oscila. Se oscila muito, seu threshold otimizado em um período pode não ser válido em outro.
+Covariate drift — P(x) muda. Calcule embeddings por janela temporal (pode usar BERTimbau congelado como extrator, Souza et al., 2023) e meça divergência entre janelas. As métricas padrão são: Jensen-Shannon, Kullback-Leibler, Population Stability Index (PSI) e Wasserstein. O guia prático da Evidently AI mostra limiares convencionais (PSI > 0,2 = drift relevante; > 0,25 = maior) e o paper de Aggarwal, Dziubiński & Prasad (2024) formaliza a derivação do PSI como variante do KL.
+Concept drift — P(y|x) muda. Essa é a mais interessante: treine no bloco A, teste no bloco B, e meça a queda de performance. Repita A→C, A→D, etc. Isso é exatamente o que Mello et al. fazem (KDMiLe 2021) e replicar o achado em um dataset em português seria uma contribuição clara.
+
+Para significância do drift: um teste Kolmogorov-Smirnov de duas amostras sobre a projeção PCA dos embeddings, ou um "classifier-based drift detection" (treine um classificador binário para distinguir "notícia do período A" vs "período B" — se AUC > 0,7, há drift relevante), conforme sugerido por Lipton, Wang & Smola (ICML 2018).
+Um detalhe prático importante: 2015–2017 cobre um período politicamente turbulento no Brasil (impeachment, Lava Jato, recessão 2015–16, reforma trabalhista). Para a classe "mercado", isso quase garante que há concept drift relevante — muitas pautas econômicas se confundem com pautas políticas no período. Isso se conecta diretamente com sua pergunta 5.
+5. Análise semântica de falsos positivos
+Aqui está possivelmente a contribuição mais interessante do trabalho. Minha sugestão é combinar três abordagens:
+
+Clusterização no espaço de embeddings dos FPs. Extraia embeddings BERTimbau dos FPs (notícias que o modelo disse "mercado" mas são de outras categorias, especialmente política). Aplique HDBSCAN ou K-Means e inspecione os clusters. Tipicamente, para o binário mercado vs. resto, você verá clusters como: "política econômica do governo", "Lava Jato com impacto em empresas", "reforma trabalhista", etc. Cada cluster é uma síndrome semântica distinta.
+Análise por features relevantes. Para o baseline TF-IDF+SVC, extraia os tokens com maior peso positivo nos FPs. Para BERT, use LIME ou SHAP nos FPs de maior confiança. O framework X-Deep (Nagoudi et al., Scientific Reports 2025) faz exatamente isso — análise de erros baseada em XAI para datasets de NLP — e serve como referência metodológica.
+Análise qualitativa guiada. Amostre ~30-50 FPs e classifique manualmente em categorias como: (a) erro do modelo legítimo, (b) rótulo original discutível — notícia genuinamente borderline, (c) falha de anotação no dataset. Essa triagem é enormemente informativa: trabalhos como o de Ganesan (prática de text classification) enfatizam que em classificação de notícias reais uma fração não-trivial dos "erros" são rótulos ambíguos. Se você identificar que 30% dos FPs de alta confiança são na verdade rótulos discutíveis, isso é um resultado — significa que o teto real de performance está abaixo do que a métrica sugere, e o modelo pode estar próximo do limite informacional do dataset.
+
+Para conectar isso ao drift (ponto 4): verifique se os clusters de FPs têm distribuição temporal diferente. Se "FPs do tipo Lava Jato" se concentram em 2016, você tem evidência dupla de concept drift + ambiguidade semântica.
+
+Recomendação de escopo final
+Dado que você tem um paper de BRACIS (tipicamente 12-15 páginas) e limitações computacionais reais com BERT/LLM, sugiro cortar o escopo para três contribuições bem executadas, não cinco meias-executadas:
+
+Caracterização quantitativa do impacto do protocolo de split (temporal vs. estratificado aleatório) no estimador de performance, em quatro famílias de modelos.
+Análise de robustez ao desbalanceamento sob aumento sintético via LLM, comparando com SMOTE e baseline sem augmentation — aqui há literatura sólida recente, por exemplo Bayer et al., 2022 e MDPI Applied Sciences, 2025, que mostra que synthetic data suplementa bem mas não substitui dados reais.
+Taxonomia qualitativa + quantitativa de falsos positivos, com ligação temporal ao drift observado.
+
+Ensembles podem ficar em trabalho futuro, ou aparecer como uma nota curta de "ceiling" no final.
+Posso avançar em qualquer um destes pontos com mais profundidade. Sugiro começarmos pela definição operacional do protocolo de split e validação, porque ele amarra todas as análises subsequentes — se essa fundação estiver errada, o resto perde valor. Quer que detalhemos o desenho experimental concreto desse passo?

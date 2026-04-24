@@ -1,0 +1,8 @@
+categoria_vs,jaccard_top30,tokens_compartilhados,tokens_exclusivos_referencia
+mundo,0.17647058823529413,acordo;disse;feira;governo;nesta;país;presidente;segundo;sobre,ainda;alta;ano;ações;banco;bilhões;brasil;dólar;economia;empresa;empresas;inflação;juros;maior;mercado;milhões;petrobras;preços;queda;setor;taxa
+colunas,0.15384615384615385,ainda;ano;brasil;governo;milhões;país;presidente;sobre,acordo;alta;ações;banco;bilhões;disse;dólar;economia;empresa;empresas;feira;inflação;juros;maior;mercado;nesta;petrobras;preços;queda;segundo;setor;taxa
+opiniao,0.15384615384615385,ainda;ano;brasil;governo;maior;país;presidente;sobre,acordo;alta;ações;banco;bilhões;disse;dólar;economia;empresa;empresas;feira;inflação;juros;mercado;milhões;nesta;petrobras;preços;queda;segundo;setor;taxa
+poder,0.1111111111111111,disse;governo;petrobras;presidente;segundo;sobre,acordo;ainda;alta;ano;ações;banco;bilhões;brasil;dólar;economia;empresa;empresas;feira;inflação;juros;maior;mercado;milhões;nesta;país;preços;queda;setor;taxa
+cotidiano,0.09090909090909091,ainda;ano;disse;feira;segundo,acordo;alta;ações;banco;bilhões;brasil;dólar;economia;empresa;empresas;governo;inflação;juros;maior;mercado;milhões;nesta;país;petrobras;presidente;preços;queda;setor;sobre;taxa
+esporte,0.05263157894736842,brasil;disse;feira,acordo;ainda;alta;ano;ações;banco;bilhões;dólar;economia;empresa;empresas;governo;inflação;juros;maior;mercado;milhões;nesta;país;petrobras;presidente;preços;queda;segundo;setor;sobre;taxa
+ilustrada,0.034482758620689655,brasil;sobre,acordo;ainda;alta;ano;ações;banco;bilhões;disse;dólar;economia;empresa;empresas;feira;governo;inflação;juros;maior;mercado;milhões;nesta;país;petrobras;presidente;preços;queda;segundo;setor;taxa
