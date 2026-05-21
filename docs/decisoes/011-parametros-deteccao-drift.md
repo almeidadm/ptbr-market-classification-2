@@ -457,3 +457,66 @@ Contrapontos registrados:
 - Reimers, N. & Gurevych, I. (2019). Sentence-BERT — para a discussão
   de pooling no contraponto. [CITAÇÃO PENDENTE: verificar entrada
   bibliográfica completa antes de incluir no artigo].
+
+## Revisão em 2026-05-21
+
+Após a primeira rodada das 6 execuções B1 e a Fase 0 de validação
+técnica, três achados merecem registro na ADR.
+
+### R1 — Smoke test `mensal-global` (08:23) é descartável
+
+A 7ª pasta sob `artifacts/drift/b1_statistical/` (`20260521-0823-mensal-global`)
+**não** é uma re-execução substituta da 1ª (`20260521-0719-mensal-global`).
+É um smoke test rodado com `--limite-pares 1` (1 par por condição,
+duração ~31s vs ~568s da execução canônica). Filtro automático já
+existe em `src/drift/analise_b1.py::eh_smoke_test` via
+`extras.limite_pares is not None`. **Execução canônica de mensal-global
+= 07:19**. Nenhuma alteração na ADR.
+
+### R2 — Janela mensal `2017-10` entrou indevidamente
+
+A §D.2 desta ADR previa excluir out/2017 da grade mensal (consistente
+com a ADR 003), mas a janela 33 (`2017-10`) entrou nas 3 execuções
+mensais com volumes muito baixos:
+
+| Escopo | n_artigos out/2017 |
+|---|---:|
+| global | 120 |
+| nao_mercado | 104 |
+| mercado | 16 |
+
+Com `mercado` reduzido a 16 artigos, KTS com permutações fica frágil
+nesse par. Mitigação implementada (R1): em
+`src/drift/analise_b1.py::filtrar_janela_invalida`, descarta pares
+onde `janela_a` ou `janela_b == "2017-10"` no momento da análise.
+**Atinge apenas `time_ordered`**; o baseline `randomized` foi sorteado
+sobre o corpus inteiro (incluindo artigos de out/2017 espalhados nas
+pseudo-janelas) e não tem como ser corrigido retroativamente.
+
+**Pendência R2** (antes do fechamento do artigo): re-executar
+`scripts/drift/run_b1.py` para as 3 granularidades mensais com filtro
+de janela aplicado em `src/drift/janelas.py` (origem), descartando
+out/2017 da iteração. Esse ciclo resolve simultaneamente time_ordered
+e randomized, e produz artefato auditável sem nota de rodapé.
+
+### Bi-semanal não foi afetada
+
+A última janela bi-semanal é `2017-09-07_2017-09-20`. O fim da grade
+em 21/09 manteve out/2017 fora — confere com §D.2. Nenhuma correção
+necessária.
+
+### Reorganização da Tabela 1 do artigo
+
+A §D.4 previa uma única "Tabela 1 (réplica Wanderley)". Após
+discussão na Fase 1, a apresentação foi separada em duas:
+
+- **Tabela 1 — Réplica Wanderley**: escopo global, granularidade
+  mensal. Mantém a comparabilidade direta com a referência.
+- **Tabela 2 — Análise condicional**: mercado × não-mercado,
+  granularidade mensal. Carrega a contribuição própria.
+- **Tabela de anexo — Bi-semanal**: todos os escopos sob granularidade
+  do trabalho de referência, como evidência de robustez.
+
+Implementação em `src/drift/analise_b1.py` com funções
+`agregar_tabela_replica_wanderley`, `agregar_tabela_condicional` e
+`agregar_tabela_anexo_bisemanal`.

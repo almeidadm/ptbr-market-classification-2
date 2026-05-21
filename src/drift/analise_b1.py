@@ -95,6 +95,35 @@ def escolher_corrida_principal_por_combo(
     return escolhidos
 
 
+def filtrar_janela_invalida(
+    escolhidos: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
+    *,
+    rotulo: str = "2017-10",
+) -> tuple[
+    dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
+    dict[tuple[str, str], int],
+]:
+    # ADR 011 §D.2 previa excluir out/2017 da grade mensal, mas a janela
+    # entrou nas 3 execuções mensais (n_artigos {global=120, mercado=16,
+    # nao_mercado=104}). Filtra time_ordered onde a janela aparece em
+    # janela_a ou janela_b. Os pares randomized usam rótulos `rand_NNN` —
+    # não atingidos por este filtro; baseline randomized ainda contém
+    # artigos de out/2017 distribuídos entre as pseudo-janelas. Remoção
+    # de origem fica como R2 (re-rodar mensais excluindo a janela).
+    filtrados: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]] = {}
+    descartados: dict[tuple[str, str], int] = {}
+    for chave, (dir_run, metadata, df) in escolhidos.items():
+        if metadata.get("granularidade") != "mensal":
+            filtrados[chave] = (dir_run, metadata, df)
+            continue
+        mascara = (df["janela_a"] == rotulo) | (df["janela_b"] == rotulo)
+        n_descartado = int(mascara.sum())
+        df_filtrado = df.loc[~mascara].reset_index(drop=True)
+        filtrados[chave] = (dir_run, metadata, df_filtrado)
+        descartados[chave] = n_descartado
+    return filtrados, descartados
+
+
 def agregar_tabela_wanderley(
     escolhidos: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
 ) -> pd.DataFrame:
@@ -127,6 +156,57 @@ def agregar_tabela_wanderley(
                     }
                 )
     return pd.DataFrame(linhas)
+
+
+def _filtrar_escolhidos(
+    escolhidos: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
+    *,
+    granularidades: set[str],
+    escopos: set[str],
+) -> dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]]:
+    return {
+        chave: valor
+        for chave, valor in escolhidos.items()
+        if chave[0] in granularidades and chave[1] in escopos
+    }
+
+
+def agregar_tabela_replica_wanderley(
+    escolhidos: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
+) -> pd.DataFrame:
+    # Tabela 1 do artigo: réplica direta do Wanderley restrita ao escopo
+    # global e à granularidade mensal (primária por ADR 011 §D.2).
+    sub = _filtrar_escolhidos(
+        escolhidos, granularidades={"mensal"}, escopos={"global"}
+    )
+    return agregar_tabela_wanderley(sub)
+
+
+def agregar_tabela_condicional(
+    escolhidos: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
+) -> pd.DataFrame:
+    # Tabela 2 do artigo: contribuição própria — perfil de drift sob
+    # análise condicional por classe (mercado × não-mercado), mensal.
+    sub = _filtrar_escolhidos(
+        escolhidos,
+        granularidades={"mensal"},
+        escopos={"mercado", "nao_mercado"},
+    )
+    return agregar_tabela_wanderley(sub)
+
+
+def agregar_tabela_anexo_bisemanal(
+    escolhidos: dict[tuple[str, str], tuple[Path, dict, pd.DataFrame]],
+) -> pd.DataFrame:
+    # Tabela de anexo: robustez sob a granularidade bi-semanal do
+    # Wanderley (ADR 011 §D.2 — "consistência sob granularidade do
+    # trabalho de referência").
+    sub = _filtrar_escolhidos(
+        escolhidos,
+        granularidades={"bisemanal"},
+        escopos={"global", "mercado", "nao_mercado"},
+    )
+    return agregar_tabela_wanderley(sub)
 
 
 def renderizar_tabela_markdown(tabela: pd.DataFrame) -> str:
