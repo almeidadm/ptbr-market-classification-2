@@ -8,6 +8,7 @@ import pytest
 from src.config import SEED
 from src.drift.janelas import (
     Janela,
+    filtrar_periodo_efetivo,
     gerar_janelas_bisemanais,
     gerar_janelas_mensais,
     gerar_particoes_aleatorizadas,
@@ -27,6 +28,60 @@ def _corpus_diario(
         for k in range(por_dia):
             linhas.append({"date": dia, "link": f"d{d:03d}-k{k}"})
     return pd.DataFrame(linhas)
+
+
+# --- filtrar_periodo_efetivo (R2 da ADR 011) ---
+
+
+def test_filtrar_periodo_descarta_apenas_fora_do_intervalo() -> None:
+    df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                [
+                    "2014-12-31",  # antes do início
+                    "2015-01-01",  # início (inclusivo)
+                    "2017-09-30",  # fim (ainda dentro)
+                    "2017-10-01",  # fim exclusivo
+                    "2017-12-01",  # depois
+                ]
+            ),
+            "link": list("abcde"),
+        }
+    )
+    df_filtrado = filtrar_periodo_efetivo(df)
+    assert df_filtrado["link"].tolist() == ["b", "c"]
+
+
+def test_filtrar_periodo_reseta_indice() -> None:
+    df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                ["2014-01-01", "2015-06-15", "2016-03-20"]
+            ),
+            "link": ["x", "y", "z"],
+        }
+    )
+    df_filtrado = filtrar_periodo_efetivo(df)
+    assert df_filtrado.index.tolist() == [0, 1]
+
+
+def test_filtrar_periodo_aceita_overrides() -> None:
+    df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2018-01-01", "2018-06-15", "2018-12-31"]),
+            "link": ["a", "b", "c"],
+        }
+    )
+    df_filtrado = filtrar_periodo_efetivo(
+        df, data_inicio="2018-06-01", data_fim_exclusivo="2018-12-31"
+    )
+    assert df_filtrado["link"].tolist() == ["b"]
+
+
+def test_filtrar_periodo_preserva_corpus_dentro_do_intervalo() -> None:
+    df = _corpus_diario("2015-01-01", n_dias=60, por_dia=1)
+    df_filtrado = filtrar_periodo_efetivo(df)
+    assert len(df_filtrado) == len(df)
 
 
 # --- Janelas mensais ---

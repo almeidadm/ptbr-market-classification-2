@@ -29,6 +29,8 @@ import numpy as np
 import pandas as pd
 
 from src.config import (
+    DATA_FIM_DRIFT_EXCLUSIVO,
+    DATA_INICIO_DRIFT,
     DIAS_POR_JANELA_BISEMANAL,
     N_REPETICOES_DRIFT,
     SEED,
@@ -68,6 +70,28 @@ def _validar_corpus(df: pd.DataFrame) -> pd.Series:
     if datas.isna().any():
         raise ValueError("`date` não pode ter valores nulos ao gerar janelas.")
     return datas
+
+
+def filtrar_periodo_efetivo(
+    df: pd.DataFrame,
+    data_inicio: str | pd.Timestamp = DATA_INICIO_DRIFT,
+    data_fim_exclusivo: str | pd.Timestamp = DATA_FIM_DRIFT_EXCLUSIVO,
+) -> pd.DataFrame:
+    """
+    Restringe o corpus à cobertura temporal efetiva da ADR 003 antes de
+    qualquer geração de janelas. Resolve a R2 da ADR 011: filtra `2017-10`
+    da iteração mensal e do baseline aleatorizado simultaneamente,
+    garantindo simetria entre `time_ordered` e `randomized`.
+
+    O intervalo é meio-aberto `[data_inicio, data_fim_exclusivo)`. Reset
+    de índice é responsabilidade do caller (manter consistência com
+    `filtrar_por_escopo` nos scripts de execução).
+    """
+    datas = _validar_corpus(df)
+    inicio = pd.Timestamp(data_inicio)
+    fim = pd.Timestamp(data_fim_exclusivo)
+    mascara = (datas >= inicio) & (datas < fim)
+    return df.loc[mascara].reset_index(drop=True)
 
 
 def gerar_janelas_mensais(df: pd.DataFrame) -> list[Janela]:

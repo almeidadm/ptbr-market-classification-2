@@ -176,3 +176,12 @@ NOMES_TESTES_B1: tuple[str, ...] = ("KS", "CVM", "KTS", "LSDD")
 
 # Tamanho do passo da janela bi-semanal (ADR 011 §D.2).
 DIAS_POR_JANELA_BISEMANAL: int = 14
+
+# Cobertura temporal efetiva para drift (ADR 003; revisão R2 da ADR 011).
+# Out/2017 (n=121) é excluído da iteração de janelas e do baseline
+# aleatorizado para resolver a assimetria documentada na R2 — janelas
+# parciais com volume baixíssimo (`mercado` com apenas 16 artigos)
+# tornam KTS/LSDD frágeis e contaminam o baseline randomized se ficarem
+# espalhados nas pseudo-janelas.
+DATA_INICIO_DRIFT: str = "2015-01-01"
+DATA_FIM_DRIFT_EXCLUSIVO: str = "2017-10-01"

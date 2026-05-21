@@ -1,27 +1,20 @@
 """
-Executa o bloco B1 (testes estatísticos) da detecção de drift (ADRs 010
+Executa o bloco B2 (análise semântica) da detecção de drift (ADRs 010
 e 011) para um par (`granularidade`, `escopo`).
 
-Carrega:
-- `artifacts/drift/embeddings/bertimbau_base_cls/embeddings.parquet`
-  (gerado por `scripts/drift/compute_embeddings.py`).
-- `data/processado/corpus_opcao7.parquet` para `y_original`, usada na
-  filtragem por escopo (`mercado`, `nao_mercado`).
+Mesmo pipeline de carregamento e janelamento do B1, trocando o conjunto
+de testes pelas três métricas semânticas (`cosseno_centroide_consecutivo`,
+`cosseno_centroide_cumulativo`, `mmd2_consecutivo`).
 
-Para cada par de janelas consecutivas:
-1. Aplica KS, CVM, KTS e LSDD via `src.drift.testes_estatisticos`.
-2. Repete para 5 partições aleatorizadas independentes (seeds
-   `SEED + repeticao_id`).
+Persiste em `artifacts/drift/b2_semantic/<timestamp>-<granularidade>-<escopo>/`
+seguindo o contrato da ADR 011 §D.6 (metadata.json + results.parquet com
+colunas `janela_a, janela_b, metrica, repeticao, condicao, valor`).
 
-Persiste em
-`artifacts/drift/b1_statistical/<timestamp>-<granularidade>-<escopo>/`
-seguindo o contrato da ADR 011 §D.6 (metadata.json + results.parquet
-com colunas `janela_a, janela_b, teste, repeticao, condicao, p_value,
-estatistica`).
+Custo:
 
-KTS e LSDD dominam o custo (O(N²·d) por par). Em L4 GPU com `n_permutations=100`,
-estimado ~1–2 min por par-de-janelas-mensal-global; ~30–60 min por
-combo (granularidade, escopo).
+- Cosseno (consecutivo + cumulativo) é praticamente grátis.
+- MMD² domina via `MMDDrift(n_permutations=1)`. Estimativa: ~10-20 s por
+  par em CPU; ~5-15 min por combo mensal (32 pares × 6 condições).
 """
 from __future__ import annotations
 
@@ -42,6 +35,7 @@ from src.config import (
     DATA_FIM_DRIFT_EXCLUSIVO,
     DATA_INICIO_DRIFT,
     DIR_ARTEFATOS_DRIFT,
+    DIR_DADOS_PROCESSADO,
     ESCOPOS_DRIFT,
     GRANULARIDADES_DRIFT,
     N_REPETICOES_DRIFT,
@@ -65,63 +59,44 @@ from src.drift.janelas import (
     filtrar_periodo_efetivo,
     gerar_repeticoes_aleatorizadas,
 )
-from src.drift.testes_estatisticos import aplicar_todos
+from src.drift.semantica import NOMES_METRICAS_B2, aplicar_todas
 
 
-def comparar_pares_consecutivos(
+def executar_condicao(
     embeddings_por_janela: list[np.ndarray],
     rotulos: list[str],
     *,
     condicao: str,
     repeticao_id: int,
-    n_permutations: int,
     seed: int,
     device: str | None,
     log_prefixo: str = "",
-    limite_pares: int | None = None,
 ) -> list[dict]:
     """
-    Aplica os 4 testes em cada par (i, i+1) consecutivo. Devolve lista
-    de dicionários prontos para virar DataFrame.
+    Aplica as três métricas no conjunto de janelas e devolve linhas
+    prontas para virar DataFrame.
     """
-    n_pares = len(embeddings_por_janela) - 1
-    if limite_pares is not None:
-        n_pares = min(n_pares, limite_pares)
-
-    linhas: list[dict] = []
     t0 = time.perf_counter()
-    for i in range(n_pares):
-        x_a = embeddings_por_janela[i]
-        x_b = embeddings_por_janela[i + 1]
-        # Seed por par mantém determinismo entre execuções repetidas.
-        seed_par = seed + i
-        resultados = aplicar_todos(
-            x_a,
-            x_b,
-            n_permutations=n_permutations,
-            seed=seed_par,
-            device=device,
-        )
-        for nome_teste, r in resultados.items():
-            linhas.append(
-                {
-                    "janela_a": rotulos[i],
-                    "janela_b": rotulos[i + 1],
-                    "teste": nome_teste,
-                    "repeticao": repeticao_id,
-                    "condicao": condicao,
-                    "p_value": r.p_value,
-                    "estatistica": r.estatistica,
-                }
-            )
-        decorrido = time.perf_counter() - t0
-        print(
-            f"  {log_prefixo}par {i + 1:>3}/{n_pares} "
-            f"({rotulos[i]} → {rotulos[i + 1]}) "
-            f"[{decorrido / 60:.1f} min]",
-            flush=True,
-        )
-    return linhas
+    resultados = aplicar_todas(
+        embeddings_por_janela, rotulos, seed=seed, device=device
+    )
+    decorrido = time.perf_counter() - t0
+    print(
+        f"  {log_prefixo}{len(resultados)} medições "
+        f"em {decorrido / 60:.1f} min",
+        flush=True,
+    )
+    return [
+        {
+            "janela_a": r.janela_a,
+            "janela_b": r.janela_b,
+            "metrica": r.metrica,
+            "repeticao": repeticao_id,
+            "condicao": condicao,
+            "valor": r.valor,
+        }
+        for r in resultados
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -147,22 +122,10 @@ def main(argv: list[str] | None = None) -> int:
         "--n-repeticoes", type=int, default=N_REPETICOES_DRIFT
     )
     parser.add_argument(
-        "--n-permutations",
-        type=int,
-        default=100,
-        help="Permutações para KTS/LSDD (default 100; reduzir para smoke).",
-    )
-    parser.add_argument(
         "--device",
         choices=["cpu", "cuda", "gpu"],
         default=None,
-        help="Dispositivo para KTS/LSDD (default: auto-detect).",
-    )
-    parser.add_argument(
-        "--limite-pares",
-        type=int,
-        default=None,
-        help="Limita a N pares consecutivos para smoke test.",
+        help="Dispositivo para MMD² (default: auto-detect).",
     )
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args(argv)
@@ -198,7 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     rotulos_temporais = [j.rotulo for j in janelas]
 
     destino = montar_dir_drift(
-        "b1_statistical",
+        "b2_semantic",
         granularidade=args.granularidade,
         escopo=args.escopo,
         raiz=args.out,
@@ -214,16 +177,14 @@ def main(argv: list[str] | None = None) -> int:
     t_inicio = time.perf_counter()
 
     print(f"[4/5] Time-ordered: {len(janelas) - 1} pares...")
-    linhas = comparar_pares_consecutivos(
+    linhas = executar_condicao(
         emb_temporais,
         rotulos_temporais,
         condicao="time_ordered",
         repeticao_id=0,
-        n_permutations=args.n_permutations,
         seed=SEED,
         device=args.device,
         log_prefixo="[time-ordered] ",
-        limite_pares=args.limite_pares,
     )
 
     print(
@@ -243,18 +204,14 @@ def main(argv: list[str] | None = None) -> int:
             for j in janelas_rand
         ]
         rotulos_rand = [j.rotulo for j in janelas_rand]
-        # Seed da repetição: SEED + rep_id + N_pares ofereceria mais
-        # isolamento; mas para reprodutibilidade simples, usa SEED + rep_id.
-        linhas_rep = comparar_pares_consecutivos(
+        linhas_rep = executar_condicao(
             emb_rand,
             rotulos_rand,
             condicao="randomized",
             repeticao_id=rep_id,
-            n_permutations=args.n_permutations,
             seed=SEED + rep_id + 1,
             device=args.device,
             log_prefixo=f"[rand rep={rep_id}] ",
-            limite_pares=args.limite_pares,
         )
         linhas.extend(linhas_rep)
 
@@ -264,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
     salvar_resultados(destino, df_resultados)
 
     metadata = construir_metadata_drift(
-        bloco="b1_statistical",
+        bloco="b2_semantic",
         escopo=args.escopo,
         granularidade=args.granularidade,
         corpus=args.corpus,
@@ -272,13 +229,14 @@ def main(argv: list[str] | None = None) -> int:
         embedding="bertimbau_base_cls",
         embedding_path=args.embeddings,
         janelas=[j.resumir() for j in janelas],
+        tests=NOMES_METRICAS_B2,
         duracao_segundos=duracao,
         extras={
-            "n_permutations": args.n_permutations,
             "device_solicitado": args.device,
             "n_pares_time_ordered": len(janelas) - 1,
             "n_pares_randomized_total": args.n_repeticoes * (len(janelas) - 1),
-            "limite_pares": args.limite_pares,
+            "mmd2_n_permutations": 1,
+            "mmd2_kernel": "rbf_mediana",
         },
     )
     salvar_json(destino / "metadata.json", metadata)
