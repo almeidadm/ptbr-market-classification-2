@@ -31,3 +31,8 @@ sentencepiece>=0.2
 # Llama 3.1 8B zero-shot (Fase 3): inferência em L4 com quantização GPTQ 4-bit.
 # vLLM 0.6+ suporta GPTQ nativamente via backend Marlin em GPUs Ampere+.
 vllm>=0.6,<1
+
+# --- Detecção de drift (decisão 011) ---
+# KS, CVM, KTS (MMDDrift), LSDD via alibi-detect. Backend pytorch é
+# reaproveitado dos pacotes acima; sem dep adicional de DL framework.
+alibi-detect>=0.12,<1

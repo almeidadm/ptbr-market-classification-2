@@ -11,6 +11,10 @@ data/processado/*
 artifacts/experimentos/*
 !artifacts/experimentos/.gitkeep
 
+# Artefatos de drift — reconstruídos via scripts/drift/*.py (vide docs/decisoes/011)
+artifacts/drift/*
+!artifacts/drift/.gitkeep
+
 # Checkpoints e pesos de modelo (persistência fraca, decisão 009 §D)
 *.ckpt
 *.safetensors
