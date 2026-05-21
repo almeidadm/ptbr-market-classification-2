@@ -151,3 +151,28 @@ KFOLD_K: int = 5
 
 # Bootstrap para ICs cross-fold (ADR 009 §D.6).
 BOOTSTRAP_N: int = 1000
+
+# --- Detecção e caracterização de drift (ADRs 010 e 011) ---
+
+DIR_ARTEFATOS_DRIFT: Path = Path(
+    os.environ.get("PTBR_MC_DIR_DRIFT", RAIZ_PROJETO / "artifacts" / "drift")
+)
+
+# Granularidades de janela para B1 (estatístico) e B2 (semântico).
+# B3 (CPD) usa centróides diários — sem entrada aqui por ser parâmetro
+# interno do bloco, não escolha de janelamento externa.
+GRANULARIDADES_DRIFT: tuple[str, ...] = ("mensal", "bisemanal")
+
+# Escopos da análise condicional por classe (ADR 010 §D.2).
+ESCOPOS_DRIFT: tuple[str, ...] = ("global", "mercado", "nao_mercado")
+
+# Repetições do baseline aleatorizado e nível descritivo de significância
+# (ADR 011 §D.5 e §D.4).
+N_REPETICOES_DRIFT: int = 5
+ALPHA_DRIFT: float = 0.05
+
+# Testes do bloco B1 (ADR 010 §D.1.1).
+NOMES_TESTES_B1: tuple[str, ...] = ("KS", "CVM", "KTS", "LSDD")
+
+# Tamanho do passo da janela bi-semanal (ADR 011 §D.2).
+DIAS_POR_JANELA_BISEMANAL: int = 14
